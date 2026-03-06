@@ -20,16 +20,19 @@ use Laravel\Fortify\Http\Controllers\TwoFactorSecretKeyController;
 use Laravel\Fortify\Http\Controllers\VerifyEmailController;
 use Laravel\Fortify\RoutePath;
 
-Route::group(['middleware' => config('fortify.middleware', ['web'])], function () {
-    $limiter = config('fortify.limiters.login');
+$limiter = config('fortify.limiters.login');
+
+Route::post(RoutePath::for('login', '/login'), [AuthenticatedSessionController::class, 'store'])
+    ->middleware(array_filter([
+        'web',
+        'guest:' . config('fortify.guard'),
+        $limiter ? 'throttle:' . $limiter : null,
+    ]))->name('login.store');
+
+Route::group(['middleware' => config('fortify.middleware', ['auth:sanctum'])], function () {
+
     $twoFactorLimiter = config('fortify.limiters.two-factor');
     $verificationLimiter = config('fortify.limiters.verification', '6,1');
-
-    Route::post(RoutePath::for('login', '/login'), [AuthenticatedSessionController::class, 'store'])
-        ->middleware(array_filter([
-            'guest:' . config('fortify.guard'),
-            $limiter ? 'throttle:' . $limiter : null,
-        ]))->name('login.store');
 
     Route::post(RoutePath::for('logout', '/logout'), [AuthenticatedSessionController::class, 'destroy'])
         ->middleware([config('fortify.auth_middleware', 'auth') . ':' . config('fortify.guard')])
@@ -78,6 +81,7 @@ Route::group(['middleware' => config('fortify.middleware', ['web'])], function (
             ->name('user-password.update');
     }
 
+    // Password Confirmation...
     Route::get(RoutePath::for('password.confirmation', '/user/confirmed-password-status'), [ConfirmedPasswordStatusController::class, 'show'])
         ->middleware([config('fortify.auth_middleware', 'auth') . ':' . config('fortify.guard')])
         ->name('password.confirmation');
